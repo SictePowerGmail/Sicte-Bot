@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "bot_enel_pastel.py"]
+CMD ["python", "sicte_bot.py"]
