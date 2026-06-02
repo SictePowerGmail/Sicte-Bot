@@ -13,7 +13,7 @@ if os.getenv("BOT_PAUSADO") == "true":
     print("Bot pausado")
     sys.exit()
 
-TOKEN = os.getenv("telegram_token_enel_consultas_bot")
+TOKEN = os.getenv("telegram_sicte_bot")
 
 bot = telebot.TeleBot(TOKEN)
 
