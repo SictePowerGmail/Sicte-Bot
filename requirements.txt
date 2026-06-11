@@ -3,4 +3,5 @@ pymysql
 python-dotenv
 bcrypt
 pandas
-openpyxl
+openpyxl
+xlrd
