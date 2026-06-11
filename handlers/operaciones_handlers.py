@@ -8,6 +8,8 @@ from services.operaciones_service import (
     eliminar_registros_por_archivo,
     insertar_datos_operaciones,
     crear_tabla_si_no_existe,
+    procesar_archivo_recurso,
+    insertar_datos_recurso
 )
 from handlers.menu_handlers import mostrar_menu_por_rol
 
@@ -119,43 +121,77 @@ def register_operaciones_handlers(bot: TeleBot):
                 tmp_file.write(downloaded_file)
                 file_path = tmp_file.name
 
-            # Procesar el archivo con pandas
-            df, nombre_archivo = procesar_archivo_excel(file_path, tipo_archivo)
+            # Procesar según el tipo de archivo
+            if tipo_archivo == "Recurso":
+                df = procesar_archivo_recurso(file_path)
 
-            if df.empty:
-                bot.edit_message_text(
-                    "⚠️ El archivo está vacío o no contiene datos válidos.",
-                    chat_id=message.chat.id,
-                    message_id=msg_procesando.message_id
+                if df.empty:
+                    bot.edit_message_text(
+                        "⚠️ El archivo de Recurso está vacío o no contiene datos válidos.",
+                        chat_id=message.chat.id,
+                        message_id=msg_procesando.message_id
+                    )
+                    bot.delete_state(message.from_user.id, message.chat.id)
+                    _limpiar_temp(message.from_user.id)
+                    mostrar_menu_por_rol(bot, message.chat.id, user)
+                    return
+
+                # Insertar nuevos datos (esto trunca la tabla de recurso antes de insertar)
+                insertados = insertar_datos_recurso(df)
+
+                # Mensaje de éxito
+                resumen = (
+                    f"✅ <b>Archivo de Recurso procesado exitosamente</b>\n\n"
+                    f" <b>Archivo:</b> {file_name}\n"
+                    f" <b>Tipo:</b> {tipo_archivo}\n"
+                    f" <b>Registros insertados (Tabla reemplazada):</b> {insertados}\n"
                 )
-                bot.delete_state(message.from_user.id, message.chat.id)
-                _limpiar_temp(message.from_user.id)
-                mostrar_menu_por_rol(bot, message.chat.id, user)
-                return
 
-            # Deduplicación: eliminar registros previos con el mismo nombre de archivo
-            eliminados = eliminar_registros_por_archivo(nombre_archivo)
+                bot.edit_message_text(
+                    resumen,
+                    chat_id=message.chat.id,
+                    message_id=msg_procesando.message_id,
+                    parse_mode='HTML'
+                )
 
-            # Insertar nuevos datos
-            insertados = insertar_datos_operaciones(df)
+            else:
+                # Procesar el archivo con pandas
+                df, nombre_archivo = procesar_archivo_excel(file_path, tipo_archivo)
 
-            # Mensaje de éxito
-            resumen = (
-                f"✅ <b>Archivo procesado exitosamente</b>\n\n"
-                f" <b>Archivo:</b> {file_name}\n"
-                f" <b>Tipo:</b> {tipo_archivo}\n"
-                f" <b>Etiqueta:</b> {nombre_archivo}\n"
-            )
-            if eliminados > 0:
-                resumen += f" <b>Registros previos eliminados:</b> {eliminados}\n"
-            resumen += f" <b>Registros insertados:</b> {insertados}\n"
+                if df.empty:
+                    bot.edit_message_text(
+                        "⚠️ El archivo está vacío o no contiene datos válidos.",
+                        chat_id=message.chat.id,
+                        message_id=msg_procesando.message_id
+                    )
+                    bot.delete_state(message.from_user.id, message.chat.id)
+                    _limpiar_temp(message.from_user.id)
+                    mostrar_menu_por_rol(bot, message.chat.id, user)
+                    return
 
-            bot.edit_message_text(
-                resumen,
-                chat_id=message.chat.id,
-                message_id=msg_procesando.message_id,
-                parse_mode='HTML'
-            )
+                # Deduplicación: eliminar registros previos con el mismo nombre de archivo
+                eliminados = eliminar_registros_por_archivo(nombre_archivo)
+
+                # Insertar nuevos datos
+                insertados = insertar_datos_operaciones(df)
+
+                # Mensaje de éxito
+                resumen = (
+                    f"✅ <b>Archivo procesado exitosamente</b>\n\n"
+                    f" <b>Archivo:</b> {file_name}\n"
+                    f" <b>Tipo:</b> {tipo_archivo}\n"
+                    f" <b>Etiqueta:</b> {nombre_archivo}\n"
+                )
+                if eliminados > 0:
+                    resumen += f" <b>Registros previos eliminados:</b> {eliminados}\n"
+                resumen += f" <b>Registros insertados:</b> {insertados}\n"
+
+                bot.edit_message_text(
+                    resumen,
+                    chat_id=message.chat.id,
+                    message_id=msg_procesando.message_id,
+                    parse_mode='HTML'
+                )
 
         except ValueError as e:
             bot.edit_message_text(

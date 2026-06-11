@@ -44,6 +44,9 @@ COLUMNAS_EXCEL_A_BD = {
 # Columnas de la BD en el orden de inserción (sin 'id' que es AUTO_INCREMENT)
 COLUMNAS_BD = list(COLUMNAS_EXCEL_A_BD.values())
 
+# Nombre de la tabla de recurso
+TABLA_RECURSO = 'recurso_operaciones_norte'
+
 
 def crear_tabla_si_no_existe():
     """Crea la tabla wfm_operaciones_norte_actividad en la BD si no existe."""
@@ -278,6 +281,142 @@ def eliminar_registros_por_archivo(nombre_archivo):
     finally:
         if cursor: cursor.close()
         if conexion: conexion.close()
+
+
+def procesar_archivo_recurso(file_path):
+    """
+    Procesa el archivo de Recurso basándose en la lógica de recurso_operaciones_norte.py
+    """
+    columnas_a_conservar = ['ALIADO', 'CIUDAD', 'NOMINA', 'CEDULA', 'NOMBRE DEL TECNICO', 
+                            'FECHA INGRESO', 'CARPETA RECURSO CLARO', 'CARGO PLANTA', 
+                            'CELULAR CORPORATIVO', 'CORREO PERSONAL', 'CEDULA SUPERVISOR', 
+                            'SUPERVISOR ALIADO', 'CONTACTO DEL SUPERVISOR', 'COORDINADOR', 
+                            'COMPOSICIÓN', 'VEHICULO', 'CODIGO SAP','ESTADO EN EL RECURSO', 
+                            'PLACA VEHICULO TECNICO', 'NOMINA AYUDANTE', 'CEDULA  AYUDANTE', 
+                            'NOMBRE AYUDANTE', 'PLACA VEHICULO AYUDANTE', 'HÍBRIDO', 'FECHA RETIRO', 
+                            'NOVEDAD DEL RECURSO', 'DASH BOARD', 'CEDULA RADIO 1', 'RADIO 1', 'CEDULA RADIO 2', 'RADIO 2',
+                            'PREOPERACIONAL TECNICO', 'PREOPERACIONAL AYUDANTE', 'FECHA DE PRESENTACIÓN  A INTERVENTORIA','Trabajos Dobles o Sencillos']
+
+    # Leer las diferentes hojas del Excel
+    recurso_actual = pd.read_excel(file_path, sheet_name='RECURSO ACTUAL')
+    recurso_actual.columns = recurso_actual.columns.str.strip()
+    recurso_actual = recurso_actual.rename(columns={'NOMBRE DEL TÉCNICO': 'NOMBRE DEL TECNICO'})
+    recurso_actual["FECHA RETIRO"] = ""
+    recurso_actual["NOVEDAD DEL RECURSO"] = ""
+    cols_actual = [col for col in columnas_a_conservar if col in recurso_actual.columns]
+    recurso_actual = recurso_actual.reindex(columns=columnas_a_conservar) # Rellena con NaN lo que falte
+
+    recurso_admon = pd.read_excel(file_path, sheet_name='RECURSO ADMON')
+    recurso_admon.columns = recurso_admon.columns.str.strip()
+    recurso_admon = recurso_admon.rename(columns={'NOMBRE DEL TÉCNICO': 'NOMBRE DEL TECNICO'})
+    recurso_admon["FECHA RETIRO"] = ""
+    recurso_admon["NOVEDAD DEL RECURSO"] = ""
+    recurso_admon = recurso_admon.drop('ESTADO EN EL RECURSO', axis=1, errors='ignore')
+    recurso_admon["ESTADO EN EL RECURSO"] = "ADMON"
+    if 'FECHA INGRESO' in recurso_admon.columns:
+        recurso_admon['FECHA DE PRESENTACIÓN  A INTERVENTORIA'] = recurso_admon['FECHA INGRESO']
+    recurso_admon = recurso_admon.reindex(columns=columnas_a_conservar)
+
+    recurso_retirados = pd.read_excel(file_path, sheet_name='RETIROS')
+    recurso_retirados.columns = recurso_retirados.columns.str.strip()
+    recurso_retirados = recurso_retirados.rename(columns={'PLACA AYUDANTE': 'PLACA VEHICULO AYUDANTE'})
+    recurso_retirados["HÍBRIDO"] = ""
+    recurso_retirados["CEDULA RADIO 1"] = ""
+    recurso_retirados["RADIO 1"] = ""
+    recurso_retirados["CEDULA RADIO 2"] = ""
+    recurso_retirados["RADIO 2"] = ""
+    recurso_retirados["PREOPERACIONAL TECNICO"] = "No"
+    recurso_retirados["PREOPERACIONAL AYUDANTE"] = "No"
+    recurso_retirados["Trabajos Dobles o Sencillos"] = ""
+    if 'FECHA INGRESO' in recurso_retirados.columns:
+        recurso_retirados['FECHA DE PRESENTACIÓN  A INTERVENTORIA'] = recurso_retirados['FECHA INGRESO']
+    recurso_retirados = recurso_retirados.drop(columns=["MES", "AÑO"], errors='ignore')
+    
+    recurso_retirados = recurso_retirados.reindex(columns=columnas_a_conservar)
+
+    # Concatenar y limpiar
+    recurso = pd.concat([recurso_actual, recurso_retirados, recurso_admon], ignore_index=True)
+    recurso.columns = recurso.columns.str.strip()
+    recurso = recurso.drop_duplicates(subset=['CEDULA'], keep='first')
+
+    # Limpiar columnas específicas
+    for col in ["Trabajos Dobles o Sencillos", "COMPOSICIÓN"]:
+        if col in recurso.columns:
+            recurso[col] = (
+                recurso[col]
+                .astype(str)
+                .str.strip()
+                .replace({
+                    "Sencillo": "SENCILLA",
+                    "Doble": "DOBLE",
+                    "Dobles": "DOBLE",
+                    "Sencillas": "SENCILLA",
+                    "SENCILLAS": "SENCILLA",
+                    "SOLO": "SENCILLA",
+                    "nan": None,
+                    "None": None
+                })
+            )
+
+    recurso = recurso.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
+    recurso = recurso.astype(str)
+
+    # Reemplazar strings vacíos por None o string vacío para BD
+    columnas_fecha = ['FECHA INGRESO']
+    for col in columnas_fecha:
+        if col in recurso.columns:
+            recurso[col] = recurso[col].replace('', None).replace('nan', None).replace('None', None)
+
+    # Reemplazar todos los 'nan' como strings que quedan por None
+    recurso = recurso.replace('nan', None).replace('None', None)
+    
+    return recurso
+
+def insertar_datos_recurso(df):
+    """
+    Trunca la tabla recurso_operaciones_norte e inserta los nuevos datos.
+    Retorna la cantidad de filas insertadas.
+    """
+    if df.empty:
+        return 0
+
+    conexion = None
+    cursor = None
+    try:
+        conexion = obtener_conexion_usuarios()
+        cursor = conexion.cursor()
+
+        # Truncar tabla antes de insertar
+        cursor.execute(f"TRUNCATE TABLE {TABLA_RECURSO}")
+        conexion.commit()
+
+        columnas = df.columns.tolist()
+        placeholders = ', '.join(['%s'] * len(columnas))
+        columnas_sql = ', '.join([f"`{col}`" for col in columnas])
+        sql = f"INSERT INTO {TABLA_RECURSO} ({columnas_sql}) VALUES ({placeholders})"
+
+        datos = [tuple(row) for row in df.values]
+
+        BATCH_SIZE = 500
+        total_insertados = 0
+        for i in range(0, len(datos), BATCH_SIZE):
+            lote = datos[i:i + BATCH_SIZE]
+            cursor.executemany(sql, lote)
+            total_insertados += len(lote)
+
+        conexion.commit()
+        print(f"Se insertaron {total_insertados} registros en {TABLA_RECURSO}")
+        return total_insertados
+
+    except pymysql.MySQLError as e:
+        if conexion:
+            conexion.rollback()
+        print(f"Error insertando datos en {TABLA_RECURSO}: {e}")
+        raise
+    finally:
+        if cursor: cursor.close()
+        if conexion: conexion.close()
+
 
 
 def insertar_datos_operaciones(df):
