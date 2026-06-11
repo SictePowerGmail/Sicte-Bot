@@ -38,6 +38,10 @@ def autenticar_usuario(username, password, telegram_id):
                 user = User(telegram_id=telegram_id, role=resultado['rol'], username=resultado['usuario'])
                 active_sessions[telegram_id] = user
                 return user
+            else:
+                print(f"Inicio de sesión fallido para el usuario '{username}': Contraseña incorrecta. (Telegram ID: {telegram_id})")
+        else:
+            print(f"Inicio de sesión fallido: El usuario '{username}' no existe. (Telegram ID: {telegram_id})")
                 
         return None
         
