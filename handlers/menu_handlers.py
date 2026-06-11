@@ -21,10 +21,9 @@ def mostrar_menu_por_rol(bot: TeleBot, chat_id, user):
         
     elif rol == 'operaciones':
         markup.add(
-            types.KeyboardButton("👷 Oper: Consultar Orden"),
-            types.KeyboardButton("👷 Oper: Consultar Rótulo")
+            types.KeyboardButton("📤 Subir Archivo")
         )
-        bot.send_message(chat_id, "👷 Menú Operaciones. Selecciona una opción:", reply_markup=markup)
+        bot.send_message(chat_id, "📝 Menú Operaciones. Selecciona una opción:", reply_markup=markup)
         
     else:
         bot.send_message(chat_id, "Tu rol no tiene un menú asignado.", reply_markup=types.ReplyKeyboardRemove())

@@ -2,3 +2,5 @@ pyTelegramBotAPI
 pymysql
 python-dotenv
 bcrypt
+pandas
+openpyxl
