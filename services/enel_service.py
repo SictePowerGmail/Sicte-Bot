@@ -1,91 +1,37 @@
-import pymysql
-from database.db_enel import obtener_conexion_enel
+from repositories.enel_repository import EnelRepository
 
-def consultar_orden(orden):
-    """Consulta la información de una orden específica, incluyendo baremos y materiales."""
-    conexion = None
-    cursor = None
-    try:
-        conexion = obtener_conexion_enel()
-        cursor = conexion.cursor()
-        
-        sql = """
-        SELECT ORDEN, ROTULO, ESTADO, FECHA_ESTADO, LOCALIDAD, TIPO_MOVIL
-        FROM vw_ordenes WHERE ORDEN = %s ORDER BY FECHA_ESTADO DESC LIMIT 1
-        """
-        sql_baremos = """
-        SELECT Id_Item_3, Cantidad_Instalada, amap, Item
-        FROM vw_baremos WHERE orden = %s
-        """
-        sql_material = """
-        SELECT Id_Item_3, Cantidad_Instalada, Item
-        FROM vw_material_instalado
-        WHERE orden = %s AND Id_Item_3 <> 0
-        """
-        
-        cursor.execute(sql, (orden,))
-        resultado = cursor.fetchone()
-        
-        cursor.execute(sql_baremos, (orden,))
-        resultado_baremos = cursor.fetchall()
-        
-        cursor.execute(sql_material, (orden,))
-        resultado_material = cursor.fetchall()
+class EnelService:
+    """Servicio para manejar la lógica de negocio de Enel."""
+    
+    def __init__(self):
+        self.enel_repo = EnelRepository()
+
+    def consultar_orden(self, orden):
+        """Consulta la información de una orden específica, incluyendo baremos y materiales."""
+        resultado = self.enel_repo.get_orden_detalle(orden)
+        resultado_baremos = self.enel_repo.get_orden_baremos(orden)
+        resultado_material = self.enel_repo.get_orden_material(orden)
         
         return resultado, resultado_baremos, resultado_material
-    except pymysql.MySQLError as e:
-        raise Exception(f"Error de base de datos:\n{e}")
-    finally:
-        if cursor: cursor.close()
-        if conexion: conexion.close()
 
-def consultar_rotulo(rotulo):
-    """Consulta todas las órdenes asociadas a un rótulo."""
-    conexion = None
-    cursor = None
-    try:
-        conexion = obtener_conexion_enel()
-        cursor = conexion.cursor()
-        
-        sql_ordenes = "SELECT DISTINCT ORDEN FROM vw_ordenes WHERE ROTULO = %s"
-        cursor.execute(sql_ordenes, (rotulo,))
-        ordenes = cursor.fetchall()
+    def consultar_rotulo(self, rotulo):
+        """Consulta todas las órdenes asociadas a un rótulo."""
+        ordenes = self.enel_repo.get_ordenes_by_rotulo(rotulo)
         
         if not ordenes:
-            return None, []
+            return 0, []
         
         detalles = []
-        sql_detalle = """
-        SELECT ORDEN, ROTULO, ESTADO, FECHA_ESTADO, LOCALIDAD, TIPO_MOVIL
-        FROM vw_ordenes WHERE ORDEN = %s ORDER BY FECHA_ESTADO DESC LIMIT 1
-        """
-        sql_baremos = """
-        SELECT Id_Item_3, Cantidad_Instalada, amap, Item
-        FROM vw_baremos WHERE orden = %s
-        """
-        sql_material = """
-        SELECT Id_Item_3, Cantidad_Instalada, Item
-        FROM vw_material_instalado
-        WHERE orden = %s AND Id_Item_3 <> 0
-        """
-        
-        for fila_orden in ordenes:
-            orden = fila_orden[0]
-            cursor.execute(sql_detalle, (orden,))
-            resultado = cursor.fetchone()
+        for orden in ordenes:
+            resultado = self.enel_repo.get_orden_detalle(orden)
             if not resultado: continue
             
-            cursor.execute(sql_baremos, (orden,))
-            resultado_baremos = cursor.fetchall()
-            
-            cursor.execute(sql_material, (orden,))
-            resultado_material = cursor.fetchall()
+            resultado_baremos = self.enel_repo.get_orden_baremos(orden)
+            resultado_material = self.enel_repo.get_orden_material(orden)
             
             detalles.append((resultado, resultado_baremos, resultado_material))
             
         return len(ordenes), detalles
-    except pymysql.MySQLError as e:
-        raise Exception(f"Error de base de datos:\n{e}")
-    finally:
-        if cursor: cursor.close()
-        if conexion: conexion.close()
+
+# Instancia global del servicio
+enel_service_instance = EnelService()

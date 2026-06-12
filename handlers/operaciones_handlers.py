@@ -2,15 +2,8 @@ import os
 import tempfile
 from telebot import TeleBot, types
 from states.bot_states import OperacionesState
-from services.auth_service import get_session
-from services.operaciones_service import (
-    procesar_archivo_excel,
-    eliminar_registros_por_archivo,
-    insertar_datos_operaciones,
-    crear_tabla_si_no_existe,
-    procesar_archivo_recurso,
-    insertar_datos_recurso
-)
+from services.auth_service import auth_service_instance
+from services.operaciones_service import operaciones_service_instance
 from handlers.menu_handlers import mostrar_menu_por_rol
 
 # Almacenamiento temporal: { user_id: tipo_archivo }
@@ -25,7 +18,7 @@ def register_operaciones_handlers(bot: TeleBot):
 
     # Asegurar que la tabla existe al registrar los handlers
     try:
-        crear_tabla_si_no_existe()
+        operaciones_service_instance.inicializar_bd()
     except Exception as e:
         print(f"Advertencia: No se pudo verificar la tabla de operaciones: {e}")
 
@@ -34,7 +27,7 @@ def register_operaciones_handlers(bot: TeleBot):
     def handle_subir_archivo(call):
         """Maneja el botón '📤 Subir Archivo' del menú de operaciones."""
         bot.answer_callback_query(call.id)
-        user = get_session(call.from_user.id)
+        user = auth_service_instance.get_session(call.from_user.id)
         if not user or 'operaciones' not in user.roles:
             bot.send_message(call.message.chat.id, "⛔ Acceso denegado. Esta función es solo para el rol Operaciones.")
             return
@@ -57,7 +50,7 @@ def register_operaciones_handlers(bot: TeleBot):
     @bot.callback_query_handler(func=lambda call: call.data.startswith("op_tipo_"))
     def handle_tipo_seleccion(call):
         """Maneja la selección del tipo de archivo (Residencial/Pymes)."""
-        user = get_session(call.from_user.id)
+        user = auth_service_instance.get_session(call.from_user.id)
         if not user or 'operaciones' not in user.roles:
             bot.answer_callback_query(call.id, "⛔ Acceso denegado.")
             return
@@ -82,7 +75,7 @@ def register_operaciones_handlers(bot: TeleBot):
     @bot.message_handler(state=OperacionesState.waiting_for_archivo, content_types=['document'])
     def handle_archivo_recibido(message):
         """Procesa el archivo Excel/CSV enviado por el usuario."""
-        user = get_session(message.from_user.id)
+        user = auth_service_instance.get_session(message.from_user.id)
         if not user or 'operaciones' not in user.roles:
             bot.reply_to(message, "⛔ Acceso denegado o sesión expirada.")
             bot.delete_state(message.from_user.id, message.chat.id)
@@ -124,7 +117,7 @@ def register_operaciones_handlers(bot: TeleBot):
 
             # Procesar según el tipo de archivo
             if tipo_archivo == "Recurso":
-                df = procesar_archivo_recurso(file_path)
+                df, insertados = operaciones_service_instance.procesar_archivo_recurso(file_path)
 
                 if df.empty:
                     bot.edit_message_text(
@@ -136,9 +129,6 @@ def register_operaciones_handlers(bot: TeleBot):
                     _limpiar_temp(message.from_user.id)
                     mostrar_menu_por_rol(bot, message.chat.id, user)
                     return
-
-                # Insertar nuevos datos (esto trunca la tabla de recurso antes de insertar)
-                insertados = insertar_datos_recurso(df)
 
                 # Mensaje de éxito
                 resumen = (
@@ -157,7 +147,7 @@ def register_operaciones_handlers(bot: TeleBot):
 
             else:
                 # Procesar el archivo con pandas
-                df, nombre_archivo = procesar_archivo_excel(file_path, tipo_archivo)
+                df, nombre_archivo, eliminados, insertados = operaciones_service_instance.procesar_archivo_excel(file_path, tipo_archivo)
 
                 if df.empty:
                     bot.edit_message_text(
@@ -169,12 +159,6 @@ def register_operaciones_handlers(bot: TeleBot):
                     _limpiar_temp(message.from_user.id)
                     mostrar_menu_por_rol(bot, message.chat.id, user)
                     return
-
-                # Deduplicación: eliminar registros previos con el mismo nombre de archivo
-                eliminados = eliminar_registros_por_archivo(nombre_archivo)
-
-                # Insertar nuevos datos
-                insertados = insertar_datos_operaciones(df)
 
                 # Mensaje de éxito
                 resumen = (

@@ -1,6 +1,7 @@
 from telebot import TeleBot, types
 from states.bot_states import AuthState
-from services.auth_service import get_session, autenticar_usuario, logout_usuario, logear_invitado, verificar_cedula_existe
+from services.auth_service import auth_service_instance
+from handlers.menu_handlers import mostrar_menu_por_rol
 
 login_temp_data = {}
 
@@ -8,11 +9,10 @@ def register_auth_handlers(bot: TeleBot):
     
     @bot.message_handler(commands=['start', 'login'])
     def handle_start(message):
-        user = get_session(message.from_user.id)
+        user = auth_service_instance.get_session(message.from_user.id)
         if user:
             roles_str = ", ".join(user.roles) if user.roles else "Sin roles"
             bot.send_message(message.chat.id, f"Hola {user.cedula}, ya tienes una sesión iniciada con rol: {roles_str}.")
-            from handlers.menu_handlers import mostrar_menu_por_rol
             mostrar_menu_por_rol(bot, message.chat.id, user)
         else:
             bot.delete_state(message.from_user.id, message.chat.id)
@@ -24,7 +24,7 @@ def register_auth_handlers(bot: TeleBot):
 
     @bot.message_handler(commands=['logout'])
     def handle_logout(message):
-        logout_usuario(message.from_user.id)
+        auth_service_instance.logout_usuario(message.from_user.id)
         bot.delete_state(message.from_user.id, message.chat.id)
         if message.from_user.id in login_temp_data:
             del login_temp_data[message.from_user.id]
@@ -50,10 +50,9 @@ def register_auth_handlers(bot: TeleBot):
             if call.from_user.id in login_temp_data:
                 del login_temp_data[call.from_user.id]
                 
-            user = logear_invitado(call.from_user.id)
+            user = auth_service_instance.logear_invitado(call.from_user.id)
             roles_str = ", ".join(user.roles) if user.roles else "Sin roles"
             bot.send_message(call.message.chat.id, f"¡Has ingresado como Invitado!\nRoles asignados: {roles_str}")
-            from handlers.menu_handlers import mostrar_menu_por_rol
             mostrar_menu_por_rol(bot, call.message.chat.id, user)
 
     @bot.message_handler(state=AuthState.waiting_for_username)
@@ -71,7 +70,7 @@ def register_auth_handlers(bot: TeleBot):
         cedula = message.text.strip()
         
         # Verificar si existe en BD antes de pedir la contraseña
-        if not verificar_cedula_existe(cedula):
+        if not auth_service_instance.verificar_cedula_existe(cedula):
             bot.send_message(message.chat.id, "⚠️ Cédula sin registrar. Por favor, verifica e intenta nuevamente:")
             return
             
@@ -95,12 +94,10 @@ def register_auth_handlers(bot: TeleBot):
         password = message.text.strip()
         
         # Eliminar el mensaje de la contraseña por seguridad
-        try:
-            bot.delete_message(message.chat.id, message.message_id)
-        except:
-            pass
-            
-        user = autenticar_usuario(cedula, password, message.from_user.id)
+        bot.delete_message(message.chat.id, message.message_id) # Ocultar contraseña
+        bot.delete_state(message.from_user.id, message.chat.id)
+        
+        user = auth_service_instance.autenticar_usuario(cedula, password, message.from_user.id)
         if user:
             roles_str = ", ".join(user.roles) if user.roles else "Sin roles"
             bot.send_message(message.chat.id, f"¡Sesión iniciada exitosamente!\nBienvenido {user.cedula} ({roles_str})")

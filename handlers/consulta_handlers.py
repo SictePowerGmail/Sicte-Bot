@@ -1,8 +1,8 @@
 import time
 from telebot import TeleBot
 from states.bot_states import EnelState
-from services.enel_service import consultar_orden, consultar_rotulo
-from services.auth_service import get_session
+from services.enel_service import enel_service_instance
+from services.auth_service import auth_service_instance
 from handlers.menu_handlers import mostrar_menu_por_rol
 
 ultimo_uso = {}
@@ -11,7 +11,7 @@ ROLES_PERMITIDOS = ['enel', 'admin', 'operaciones']
 def register_consulta_handlers(bot: TeleBot):
     
     def check_access(user_id, chat_id):
-        user = get_session(user_id)
+        user = auth_service_instance.get_session(user_id)
         if not user or not any(rol in user.roles for rol in ROLES_PERMITIDOS):
             bot.send_message(chat_id, "Acceso denegado o sesión expirada. Usa /start para iniciar sesión.")
             return None
@@ -49,7 +49,7 @@ def register_consulta_handlers(bot: TeleBot):
         bot.delete_state(message.from_user.id, message.chat.id)
         
         try:
-            res, baremos, material = consultar_orden(orden)
+            res, baremos, material = enel_service_instance.consultar_orden(orden)
             if res:
                 ORDEN, ROTULO, ESTADO, FECHA_ESTADO, LOCALIDAD, TIPO_MOVIL = res
                 respuesta = (
@@ -94,7 +94,7 @@ def register_consulta_handlers(bot: TeleBot):
         bot.delete_state(message.from_user.id, message.chat.id)
         
         try:
-            cantidad, detalles = consultar_rotulo(rotulo)
+            cantidad, detalles = enel_service_instance.consultar_rotulo(rotulo)
             if cantidad == 0:
                 bot.reply_to(message, "Favor validar con centro de control")
                 mostrar_menu_por_rol(bot, message.chat.id, user)

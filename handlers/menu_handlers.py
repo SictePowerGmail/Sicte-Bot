@@ -84,8 +84,8 @@ def register_menu_handlers(bot: TeleBot):
     @bot.callback_query_handler(func=lambda call: call.data in ["menu_enel", "menu_admin", "menu_operaciones", "volver_menu_principal"])
     def handle_submenus(call):
         bot.answer_callback_query(call.id)
-        from services.auth_service import get_session
-        user = get_session(call.from_user.id)
+        from services.auth_service import auth_service_instance
+        user = auth_service_instance.get_session(call.from_user.id)
         if not user:
             bot.send_message(call.message.chat.id, "Sesión expirada. Por favor usa /start")
             return
