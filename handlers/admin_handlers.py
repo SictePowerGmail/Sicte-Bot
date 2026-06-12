@@ -31,12 +31,13 @@ def register_admin_handlers(bot: TeleBot):
                                       message_id=msg_procesando.message_id)
                 return
                 
-            # Enviar el documento
+            # Enviar el documento con un timeout extendido (120 segundos) para archivos pesados
             with open(file_path, 'rb') as document:
                 bot.send_document(
                     call.message.chat.id,
                     document,
-                    caption="✅ Aquí tienes el consolidado de penalizaciones."
+                    caption="✅ Aquí tienes el consolidado de penalizaciones.",
+                    timeout=120
                 )
             
             # Eliminar mensaje de "procesando"
