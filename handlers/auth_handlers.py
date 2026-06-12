@@ -6,7 +6,7 @@ login_temp_data = {}
 
 def register_auth_handlers(bot: TeleBot):
     
-    @bot.message_handler(commands=['start', 'login'], state='*')
+    @bot.message_handler(commands=['start', 'login'])
     def handle_start(message):
         user = get_session(message.from_user.id)
         if user:
@@ -22,7 +22,7 @@ def register_auth_handlers(bot: TeleBot):
             markup.add(btn_login, btn_guest)
             bot.send_message(message.chat.id, "¡Bienvenido! Por favor, selecciona una opción para ingresar:", reply_markup=markup)
 
-    @bot.message_handler(commands=['logout'], state='*')
+    @bot.message_handler(commands=['logout'])
     def handle_logout(message):
         logout_usuario(message.from_user.id)
         bot.delete_state(message.from_user.id, message.chat.id)
@@ -55,9 +55,14 @@ def register_auth_handlers(bot: TeleBot):
     @bot.message_handler(state=AuthState.waiting_for_username)
     def process_cedula(message):
         if message.text.startswith('/'):
-            bot.send_message(message.chat.id, "Debes ingresar una cédula válida. Usa /start para reiniciar.")
             bot.delete_state(message.from_user.id, message.chat.id)
-            return
+            if message.text == '/start':
+                return handle_start(message)
+            elif message.text == '/logout':
+                return handle_logout(message)
+            else:
+                bot.send_message(message.chat.id, "Operación cancelada.")
+                return
             
         login_temp_data[message.from_user.id] = message.text
         bot.send_message(message.chat.id, "Por favor, ingresa tu contraseña:")
@@ -66,9 +71,14 @@ def register_auth_handlers(bot: TeleBot):
     @bot.message_handler(state=AuthState.waiting_for_password)
     def process_password(message):
         if message.text.startswith('/'):
-            bot.send_message(message.chat.id, "Debes ingresar una contraseña válida. Usa /start para reiniciar.")
             bot.delete_state(message.from_user.id, message.chat.id)
-            return
+            if message.text == '/start':
+                return handle_start(message)
+            elif message.text == '/logout':
+                return handle_logout(message)
+            else:
+                bot.send_message(message.chat.id, "Operación cancelada.")
+                return
             
         cedula = login_temp_data.get(message.from_user.id)
         password = message.text
