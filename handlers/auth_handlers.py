@@ -6,7 +6,7 @@ login_temp_data = {}
 
 def register_auth_handlers(bot: TeleBot):
     
-    @bot.message_handler(commands=['start', 'login'])
+    @bot.message_handler(commands=['start', 'login'], state='*')
     def handle_start(message):
         user = get_session(message.from_user.id)
         if user:
@@ -15,11 +15,29 @@ def register_auth_handlers(bot: TeleBot):
             from handlers.menu_handlers import mostrar_menu_por_rol
             mostrar_menu_por_rol(bot, message.chat.id, user)
         else:
+            bot.delete_state(message.from_user.id, message.chat.id)
             markup = types.InlineKeyboardMarkup(row_width=1)
             btn_login = types.InlineKeyboardButton("🔑 Iniciar Sesión", callback_data="login_normal")
             btn_guest = types.InlineKeyboardButton("👤 Entrar como Invitado", callback_data="login_guest")
             markup.add(btn_login, btn_guest)
             bot.send_message(message.chat.id, "¡Bienvenido! Por favor, selecciona una opción para ingresar:", reply_markup=markup)
+
+    @bot.message_handler(commands=['logout'], state='*')
+    def handle_logout(message):
+        logout_usuario(message.from_user.id)
+        bot.delete_state(message.from_user.id, message.chat.id)
+        if message.from_user.id in login_temp_data:
+            del login_temp_data[message.from_user.id]
+            
+        remove_markup = types.ReplyKeyboardRemove()
+        bot.send_message(message.chat.id, "Sesión cerrada exitosamente.", reply_markup=remove_markup)
+        
+        # Volver a mostrar las opciones de ingreso
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        btn_login = types.InlineKeyboardButton("🔑 Iniciar Sesión", callback_data="login_normal")
+        btn_guest = types.InlineKeyboardButton("👤 Entrar como Invitado", callback_data="login_guest")
+        markup.add(btn_login, btn_guest)
+        bot.send_message(message.chat.id, "Por favor, selecciona una opción para ingresar:", reply_markup=markup)
 
     @bot.callback_query_handler(func=lambda call: call.data in ["login_normal", "login_guest"])
     def callback_login(call):
@@ -36,12 +54,22 @@ def register_auth_handlers(bot: TeleBot):
 
     @bot.message_handler(state=AuthState.waiting_for_username)
     def process_cedula(message):
+        if message.text.startswith('/'):
+            bot.send_message(message.chat.id, "Debes ingresar una cédula válida. Usa /start para reiniciar.")
+            bot.delete_state(message.from_user.id, message.chat.id)
+            return
+            
         login_temp_data[message.from_user.id] = message.text
         bot.send_message(message.chat.id, "Por favor, ingresa tu contraseña:")
         bot.set_state(message.from_user.id, AuthState.waiting_for_password, message.chat.id)
 
     @bot.message_handler(state=AuthState.waiting_for_password)
     def process_password(message):
+        if message.text.startswith('/'):
+            bot.send_message(message.chat.id, "Debes ingresar una contraseña válida. Usa /start para reiniciar.")
+            bot.delete_state(message.from_user.id, message.chat.id)
+            return
+            
         cedula = login_temp_data.get(message.from_user.id)
         password = message.text
         
@@ -64,9 +92,3 @@ def register_auth_handlers(bot: TeleBot):
         else:
             bot.send_message(message.chat.id, "Credenciales incorrectas. Intenta nuevamente ingresando tu cédula:")
             bot.set_state(message.from_user.id, AuthState.waiting_for_username, message.chat.id)
-
-    @bot.message_handler(commands=['logout'])
-    def handle_logout(message):
-        logout_usuario(message.from_user.id)
-        bot.delete_state(message.from_user.id, message.chat.id)
-        bot.send_message(message.chat.id, "Sesión cerrada. Usa /start para volver a ingresar.")
