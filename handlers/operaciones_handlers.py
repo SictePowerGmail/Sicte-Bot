@@ -30,12 +30,13 @@ def register_operaciones_handlers(bot: TeleBot):
         print(f"Advertencia: No se pudo verificar la tabla de operaciones: {e}")
 
     # ================== BOTÓN "Subir Archivo" ==================
-    @bot.message_handler(func=lambda m: m.text and "Subir Archivo" in m.text)
-    def handle_subir_archivo(message):
+    @bot.callback_query_handler(func=lambda call: call.data == "op_operaciones_subir")
+    def handle_subir_archivo(call):
         """Maneja el botón '📤 Subir Archivo' del menú de operaciones."""
-        user = get_session(message.from_user.id)
+        bot.answer_callback_query(call.id)
+        user = get_session(call.from_user.id)
         if not user or 'operaciones' not in user.roles:
-            bot.reply_to(message, "⛔ Acceso denegado. Esta función es solo para el rol Operaciones.")
+            bot.send_message(call.message.chat.id, "⛔ Acceso denegado. Esta función es solo para el rol Operaciones.")
             return
 
         # Mostrar teclado inline con opciones de tipo de archivo
@@ -46,7 +47,7 @@ def register_operaciones_handlers(bot: TeleBot):
             types.InlineKeyboardButton("👷‍♂️ Recurso", callback_data="op_tipo_Recurso")
         )
         bot.send_message(
-            message.chat.id,
+            call.message.chat.id,
             "📂 <b>Selecciona el tipo de archivo que deseas subir:</b>",
             reply_markup=markup,
             parse_mode='HTML'
