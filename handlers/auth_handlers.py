@@ -46,6 +46,10 @@ def register_auth_handlers(bot: TeleBot):
             bot.send_message(call.message.chat.id, "Por favor, ingresa tu cédula:")
             bot.set_state(call.from_user.id, AuthState.waiting_for_username, call.message.chat.id)
         elif call.data == "login_guest":
+            bot.delete_state(call.from_user.id, call.message.chat.id)
+            if call.from_user.id in login_temp_data:
+                del login_temp_data[call.from_user.id]
+                
             user = logear_invitado(call.from_user.id)
             roles_str = ", ".join(user.roles) if user.roles else "Sin roles"
             bot.send_message(call.message.chat.id, f"¡Has ingresado como Invitado!\nRoles asignados: {roles_str}")
