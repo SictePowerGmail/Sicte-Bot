@@ -9,6 +9,7 @@ from handlers.auth_handlers import register_auth_handlers
 from handlers.operaciones_handlers import register_operaciones_handlers
 from handlers.consulta_handlers import register_consulta_handlers
 from handlers.menu_handlers import register_menu_handlers
+from handlers.admin_handlers import register_admin_handlers
 
 load_dotenv()
 
@@ -38,6 +39,7 @@ register_auth_handlers(bot)
 register_operaciones_handlers(bot)
 register_consulta_handlers(bot)
 register_menu_handlers(bot)
+register_admin_handlers(bot)
 
 # Manejador genérico para texto no reconocido o botones no mapeados
 @bot.message_handler(func=lambda message: True)

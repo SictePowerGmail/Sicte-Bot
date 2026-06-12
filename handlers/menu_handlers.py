@@ -12,8 +12,7 @@ def mostrar_submenu_directo(bot, chat_id, rol, con_volver=False, message_id=None
         titulo = "📝 Menú Enel. Selecciona una opción:"
     elif rol == 'admin':
         markup.add(
-            types.InlineKeyboardButton("🛠️ Admin: Consultar Orden", callback_data="op_admin_orden"),
-            types.InlineKeyboardButton("🛠️ Admin: Consultar Rótulo", callback_data="op_admin_rotulo")
+            types.InlineKeyboardButton("⬇️ Descargar penalizaciones consolidado", callback_data="op_admin_penalizaciones")
         )
         titulo = "⚙️ Menú Administrador. Selecciona una opción:"
     elif rol == 'operaciones':
