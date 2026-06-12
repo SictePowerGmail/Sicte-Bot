@@ -16,7 +16,7 @@ def verificar_cedula_existe(cedula):
         conexion = obtener_conexion_usuarios()
         cursor = conexion.cursor(pymysql.cursors.DictCursor)
         
-        sql = "SELECT cedula FROM user WHERE cedula = %s LIMIT 1"
+        sql = "SELECT cedula FROM `user` WHERE cedula = %s LIMIT 1"
         cursor.execute(sql, (cedula,))
         resultado = cursor.fetchone()
         
@@ -68,7 +68,7 @@ def autenticar_usuario(cedula, password, telegram_id):
         conexion = obtener_conexion_usuarios()
         cursor = conexion.cursor(pymysql.cursors.DictCursor)
         
-        sql = "SELECT cedula, contrasena FROM user WHERE cedula = %s LIMIT 1"
+        sql = "SELECT cedula, contrasena FROM `user` WHERE cedula = %s LIMIT 1"
         cursor.execute(sql, (cedula,))
         resultado = cursor.fetchone()
         

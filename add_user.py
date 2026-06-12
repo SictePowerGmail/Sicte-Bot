@@ -40,7 +40,7 @@ def agregar_usuario():
         cursor = conexion.cursor()
         
         # Insertar en tabla user
-        sql_user = "INSERT INTO user (cedula, contrasena) VALUES (%s, %s)"
+        sql_user = "INSERT INTO `user` (cedula, contrasena) VALUES (%s, %s)"
         cursor.execute(sql_user, (cedula, hashed_password))
         
         # Insertar en tabla de roles (inicializando en null y seteando solo el correspondiente)
