@@ -8,6 +8,26 @@ from models.user import User
 # Estructura: { chat_id: User }
 active_sessions = {}
 
+def verificar_cedula_existe(cedula):
+    """Verifica si la cédula existe en la tabla user."""
+    conexion = None
+    cursor = None
+    try:
+        conexion = obtener_conexion_usuarios()
+        cursor = conexion.cursor(pymysql.cursors.DictCursor)
+        
+        sql = "SELECT cedula FROM user WHERE cedula = %s LIMIT 1"
+        cursor.execute(sql, (cedula,))
+        resultado = cursor.fetchone()
+        
+        return resultado is not None
+    except pymysql.MySQLError as e:
+        print(f"Error de DB verificando cédula: {e}")
+        return False
+    finally:
+        if cursor: cursor.close()
+        if conexion: conexion.close()
+
 def obtener_roles_usuario(cedula):
     """Consulta la tabla rol_chatbot_telegram para obtener los roles basados en la cédula o si es invitado."""
     conexion = None

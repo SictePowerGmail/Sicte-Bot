@@ -1,6 +1,6 @@
 from telebot import TeleBot, types
 from states.bot_states import AuthState
-from services.auth_service import get_session, autenticar_usuario, logout_usuario, logear_invitado
+from services.auth_service import get_session, autenticar_usuario, logout_usuario, logear_invitado, verificar_cedula_existe
 
 login_temp_data = {}
 
@@ -64,7 +64,14 @@ def register_auth_handlers(bot: TeleBot):
                 bot.send_message(message.chat.id, "Operación cancelada.")
                 return
             
-        login_temp_data[message.from_user.id] = message.text
+        cedula = message.text.strip()
+        
+        # Verificar si existe en BD antes de pedir la contraseña
+        if not verificar_cedula_existe(cedula):
+            bot.send_message(message.chat.id, "⚠️ Cédula sin registrar. Por favor, verifica e intenta nuevamente:")
+            return
+            
+        login_temp_data[message.from_user.id] = cedula
         bot.send_message(message.chat.id, "Por favor, ingresa tu contraseña:")
         bot.set_state(message.from_user.id, AuthState.waiting_for_password, message.chat.id)
 
@@ -81,7 +88,7 @@ def register_auth_handlers(bot: TeleBot):
                 return
             
         cedula = login_temp_data.get(message.from_user.id)
-        password = message.text
+        password = message.text.strip()
         
         # Eliminar el mensaje de la contraseña por seguridad
         try:
