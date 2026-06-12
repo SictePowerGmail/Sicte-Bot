@@ -18,11 +18,11 @@ def obtener_conexion_usuarios():
 
 def agregar_usuario():
     print("=== Agregar Nuevo Usuario al Bot ===")
-    usuario = input("Ingresa el nombre de usuario: ").strip()
+    cedula = input("Ingresa la cédula: ").strip()
     password = input("Ingresa la contraseña: ").strip()
-    rol = input("Ingresa el rol (admin, enel, operaciones): ").strip().lower()
+    rol = input("Ingresa el rol principal a agregar (admin, enel, operaciones): ").strip().lower()
     
-    if not usuario or not password or not rol:
+    if not cedula or not password or not rol:
         print("Error: Todos los campos son obligatorios.")
         return
         
@@ -39,11 +39,22 @@ def agregar_usuario():
         conexion = obtener_conexion_usuarios()
         cursor = conexion.cursor()
         
-        sql = "INSERT INTO usuarios (usuario, password, rol) VALUES (%s, %s, %s)"
-        cursor.execute(sql, (usuario, hashed_password, rol))
+        # Insertar en tabla user
+        sql_user = "INSERT INTO user (cedula, contrasena) VALUES (%s, %s)"
+        cursor.execute(sql_user, (cedula, hashed_password))
+        
+        # Insertar en tabla de roles (inicializando en null y seteando solo el correspondiente)
+        columna_rol = ""
+        if rol == 'enel': columna_rol = "enelApConsultas"
+        elif rol == 'operaciones': columna_rol = "wfmOperacionesNorte"
+        elif rol == 'admin': columna_rol = "penalizaciones"
+        
+        sql_rol = f"INSERT INTO rol_chatbot_telegram (cedula, {columna_rol}) VALUES (%s, %s)"
+        cursor.execute(sql_rol, (cedula, 'X'))
+        
         conexion.commit()
         
-        print(f"\n¡Usuario '{usuario}' (Rol: {rol}) agregado exitosamente con contraseña encriptada!")
+        print(f"\n¡Usuario con cédula '{cedula}' (Rol: {rol}) agregado exitosamente!")
     except pymysql.MySQLError as e:
         print(f"\nError de base de datos: {e}")
     except Exception as e:

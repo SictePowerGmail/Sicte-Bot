@@ -13,7 +13,7 @@ def register_consulta_handlers(bot: TeleBot):
     def check_access(message):
         user_id = message.from_user.id
         user = get_session(user_id)
-        if not user or user.role.lower() not in ROLES_PERMITIDOS:
+        if not user or not any(rol in user.roles for rol in ROLES_PERMITIDOS):
             bot.reply_to(message, "Acceso denegado o sesión expirada. Usa /start para iniciar sesión.")
             return None
             

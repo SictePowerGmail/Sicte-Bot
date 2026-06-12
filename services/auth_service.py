@@ -8,10 +8,39 @@ from models.user import User
 # Estructura: { chat_id: User }
 active_sessions = {}
 
-def autenticar_usuario(username, password, telegram_id):
+def obtener_roles_usuario(cedula):
+    """Consulta la tabla rol_chatbot_telegram para obtener los roles basados en la cédula o si es invitado."""
+    conexion = None
+    cursor = None
+    roles = []
+    try:
+        conexion = obtener_conexion_usuarios()
+        cursor = conexion.cursor(pymysql.cursors.DictCursor)
+        
+        sql = "SELECT enelApConsultas, wfmOperacionesNorte, penalizaciones FROM rol_chatbot_telegram WHERE cedula = %s LIMIT 1"
+        cursor.execute(sql, (cedula,))
+        resultado = cursor.fetchone()
+        
+        if resultado:
+            if resultado.get('enelApConsultas'):
+                roles.append('enel')
+            if resultado.get('wfmOperacionesNorte'):
+                roles.append('operaciones')
+            if resultado.get('penalizaciones'):
+                roles.append('admin')
+                
+        return roles
+    except pymysql.MySQLError as e:
+        print(f"Error de DB obteniendo roles: {e}")
+        return []
+    finally:
+        if cursor: cursor.close()
+        if conexion: conexion.close()
+
+def autenticar_usuario(cedula, password, telegram_id):
     """
-    Verifica las credenciales y el hash en la base de datos de aplicativos_claro.
-    Si son válidas, actualiza telegram_chat_id y fecha_login, registra la sesión y devuelve el objeto User.
+    Verifica las credenciales y el hash en la tabla user.
+    Si son válidas, obtiene los roles y devuelve el objeto User.
     """
     conexion = None
     cursor = None
@@ -19,29 +48,25 @@ def autenticar_usuario(username, password, telegram_id):
         conexion = obtener_conexion_usuarios()
         cursor = conexion.cursor(pymysql.cursors.DictCursor)
         
-        sql = "SELECT id, usuario, password, rol FROM usuarios WHERE usuario = %s LIMIT 1"
-        cursor.execute(sql, (username,))
+        sql = "SELECT cedula, contrasena FROM user WHERE cedula = %s LIMIT 1"
+        cursor.execute(sql, (cedula,))
         resultado = cursor.fetchone()
         
         if resultado:
             # Obtener el hash de la base de datos
-            hash_db = resultado['password'].encode('utf-8')
+            hash_db = resultado['contrasena'].encode('utf-8')
             
             # Validar la contraseña proporcionada contra el hash con bcrypt
             if bcrypt.checkpw(password.encode('utf-8'), hash_db):
-                # Contraseña correcta, actualizamos datos de sesión en BD
-                sql_update = "UPDATE usuarios SET telegram_chat_id = %s, fecha_login = %s WHERE id = %s"
-                fecha_actual = datetime.now()
-                cursor.execute(sql_update, (telegram_id, fecha_actual, resultado['id']))
-                conexion.commit()
                 
-                user = User(telegram_id=telegram_id, role=resultado['rol'], username=resultado['usuario'])
+                roles = obtener_roles_usuario(cedula)
+                user = User(telegram_id=telegram_id, roles=roles, cedula=cedula)
                 active_sessions[telegram_id] = user
                 return user
             else:
-                print(f"Inicio de sesión fallido para el usuario '{username}': Contraseña incorrecta. (Telegram ID: {telegram_id})")
+                print(f"Inicio de sesión fallido para la cédula '{cedula}': Contraseña incorrecta. (Telegram ID: {telegram_id})")
         else:
-            print(f"Inicio de sesión fallido: El usuario '{username}' no existe. (Telegram ID: {telegram_id})")
+            print(f"Inicio de sesión fallido: La cédula '{cedula}' no existe. (Telegram ID: {telegram_id})")
                 
         return None
         
@@ -55,51 +80,18 @@ def autenticar_usuario(username, password, telegram_id):
         if cursor: cursor.close()
         if conexion: conexion.close()
 
+def logear_invitado(telegram_id):
+    """Logea a un usuario como invitado consultando directamente la tabla de roles."""
+    roles = obtener_roles_usuario("Invitado")
+    user = User(telegram_id=telegram_id, roles=roles, cedula="Invitado")
+    active_sessions[telegram_id] = user
+    return user
+
 def get_session(telegram_id):
-    """Retorna la sesión activa para el telegram_id dado, verificando primero en memoria y luego en DB."""
-    if telegram_id in active_sessions:
-        return active_sessions[telegram_id]
-        
-    # Si no está en memoria, buscamos en base de datos para recuperar la sesión activa
-    conexion = None
-    cursor = None
-    try:
-        conexion = obtener_conexion_usuarios()
-        cursor = conexion.cursor(pymysql.cursors.DictCursor)
-        
-        sql = "SELECT usuario, rol FROM usuarios WHERE telegram_chat_id = %s LIMIT 1"
-        cursor.execute(sql, (telegram_id,))
-        resultado = cursor.fetchone()
-        
-        if resultado:
-            user = User(telegram_id=telegram_id, role=resultado['rol'], username=resultado['usuario'])
-            active_sessions[telegram_id] = user
-            return user
-            
-        return None
-    except pymysql.MySQLError as e:
-        print(f"Error de DB obteniendo sesión: {e}")
-        return None
-    finally:
-        if cursor: cursor.close()
-        if conexion: conexion.close()
+    """Retorna la sesión activa para el telegram_id dado."""
+    return active_sessions.get(telegram_id)
 
 def logout_usuario(telegram_id):
-    """Cierra la sesión del usuario limpiando el telegram_chat_id en la BD y en memoria."""
+    """Cierra la sesión del usuario limpiando en memoria."""
     if telegram_id in active_sessions:
         del active_sessions[telegram_id]
-        
-    conexion = None
-    cursor = None
-    try:
-        conexion = obtener_conexion_usuarios()
-        cursor = conexion.cursor()
-        
-        sql = "UPDATE usuarios SET telegram_chat_id = NULL WHERE telegram_chat_id = %s"
-        cursor.execute(sql, (telegram_id,))
-        conexion.commit()
-    except pymysql.MySQLError as e:
-        print(f"Error de DB en logout: {e}")
-    finally:
-        if cursor: cursor.close()
-        if conexion: conexion.close()

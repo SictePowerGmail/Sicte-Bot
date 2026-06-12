@@ -1,5 +1,5 @@
 class User:
-    def __init__(self, telegram_id, role, username=None):
+    def __init__(self, telegram_id, roles, cedula=None):
         self.telegram_id = telegram_id
-        self.role = role
-        self.username = username
+        self.roles = roles
+        self.cedula = cedula

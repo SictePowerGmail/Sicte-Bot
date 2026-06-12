@@ -34,7 +34,7 @@ def register_operaciones_handlers(bot: TeleBot):
     def handle_subir_archivo(message):
         """Maneja el botón '📤 Subir Archivo' del menú de operaciones."""
         user = get_session(message.from_user.id)
-        if not user or user.role.lower() != 'operaciones':
+        if not user or 'operaciones' not in user.roles:
             bot.reply_to(message, "⛔ Acceso denegado. Esta función es solo para el rol Operaciones.")
             return
 
@@ -57,7 +57,7 @@ def register_operaciones_handlers(bot: TeleBot):
     def handle_tipo_seleccion(call):
         """Maneja la selección del tipo de archivo (Residencial/Pymes)."""
         user = get_session(call.from_user.id)
-        if not user or user.role.lower() != 'operaciones':
+        if not user or 'operaciones' not in user.roles:
             bot.answer_callback_query(call.id, "⛔ Acceso denegado.")
             return
 
@@ -82,7 +82,7 @@ def register_operaciones_handlers(bot: TeleBot):
     def handle_archivo_recibido(message):
         """Procesa el archivo Excel/CSV enviado por el usuario."""
         user = get_session(message.from_user.id)
-        if not user or user.role.lower() != 'operaciones':
+        if not user or 'operaciones' not in user.roles:
             bot.reply_to(message, "⛔ Acceso denegado o sesión expirada.")
             bot.delete_state(message.from_user.id, message.chat.id)
             return
