@@ -1,3 +1,4 @@
+from database import db_connection
 import time
 from telebot import TeleBot
 from states.bot_states import EnelState
@@ -78,8 +79,16 @@ def register_consulta_handlers(bot: TeleBot):
                     respuesta += "\n<b>Material:</b> Sin material\n"
             else:
                 respuesta = "Favor validar con centro de control"
+
+            if len(respuesta) > 4000:
+                bot.reply_to(
+                    message,
+                    "⚠️ La consulta contiene demasiada información.\n\n"
+                    "Favor consultar con Centro de Control."
+                )
+            else:
+                bot.reply_to(message, respuesta, parse_mode='HTML')
                 
-            bot.reply_to(message, respuesta, parse_mode='HTML')
         except Exception as e:
             bot.reply_to(message, str(e))
             
@@ -130,7 +139,14 @@ def register_consulta_handlers(bot: TeleBot):
 
             # Si el texto es muy largo, Telegram falla. Se envía la respuesta completa, 
             # pero en producción se podría dividir el texto si excede 4096 caracteres.
-            bot.reply_to(message, respuesta, parse_mode='HTML')
+            if len(respuesta) > 4000:
+                bot.reply_to(
+                    message,
+                    "⚠️ La consulta contiene demasiada información.\n\n"
+                    "Favor consultar con Centro de Control."
+                )
+            else:
+                bot.reply_to(message, respuesta, parse_mode='HTML')
         except Exception as e:
             bot.reply_to(message, str(e))
             
