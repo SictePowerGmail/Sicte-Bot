@@ -10,6 +10,7 @@ from handlers.operaciones_handlers import register_operaciones_handlers
 from handlers.consulta_handlers import register_consulta_handlers
 from handlers.menu_handlers import register_menu_handlers
 from handlers.admin_handlers import register_admin_handlers
+from handlers.operaciones_centro_handlers import register_operaciones_centro_handlers
 
 load_dotenv()
 
@@ -37,6 +38,7 @@ bot.add_custom_filter(StateFilter(bot))
 # Registrar handlers
 register_auth_handlers(bot)
 register_operaciones_handlers(bot)
+register_operaciones_centro_handlers(bot)
 register_consulta_handlers(bot)
 register_menu_handlers(bot)
 register_admin_handlers(bot)
