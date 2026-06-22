@@ -4,16 +4,16 @@ from services.auth_service import auth_service_instance
 from services.operaciones_centro_service import preoperacional_centro_service_instance
 from handlers.menu_handlers import mostrar_menu_por_rol
 
-def register_admin_handlers(bot: TeleBot):
+def register_operaciones_centro_handlers(bot: TeleBot):
     """Registra los handlers para el módulo de Operaciones Centro (Preoperacional)."""
 
-    @bot.callback_query_handler(func=lambda call: call.data == "op_preoperacional_operaciones_centro_penalizaciones")
-    def handle_descargar_penalizaciones(call):
-        """Maneja el botón '⬇️ Descargar Preoperacional Centro' del menú admin."""
+    @bot.callback_query_handler(func=lambda call: call.data == "op_preoperacional_operaciones_centro")
+    def handle_descargar_preoperacional(call):
+        """Maneja el botón '⬇️ Descargar Preoperacional Centro' del menú Operaciones Centro."""
         bot.answer_callback_query(call.id)
         
         user = auth_service_instance.get_session(call.from_user.id)
-        if not user or 'admin' not in user.roles:
+        if not user or 'operaciones_centro' not in user.roles:
             bot.send_message(call.message.chat.id, "⛔ Acceso denegado. Esta función es solo para el rol Operaciones Centro.")
             return
 
