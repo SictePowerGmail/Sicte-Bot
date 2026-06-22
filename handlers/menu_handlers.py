@@ -73,7 +73,7 @@ def mostrar_menu_por_rol(bot: TeleBot, chat_id, user, message_id=None):
         has_menu = True
         
     if 'operaciones' in roles:
-        markup.add(types.InlineKeyboardButton("👷‍♂️ Menú Operaciones", callback_data="menu_operaciones"))
+        markup.add(types.InlineKeyboardButton("👷‍♂️ Menú Operaciones Norte", callback_data="menu_operaciones"))
         has_menu = True
         
     if has_menu:
