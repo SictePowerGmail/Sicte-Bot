@@ -19,7 +19,7 @@ def mostrar_submenu_directo(bot, chat_id, rol, con_volver=False, message_id=None
         markup.add(
             types.InlineKeyboardButton("⬇️ Descargar preoperacional", callback_data="op_preoperacional_operaciones_centro")
         )
-        titulo = "📝 Menú Opreaciones Centro. Selecciona una opción:"
+        titulo = "📝 Menú Operaciones Centro. Selecciona una opción:"
     elif rol == 'operaciones':
         markup.add(
             types.InlineKeyboardButton("📤 Subir Archivo", callback_data="op_operaciones_subir")

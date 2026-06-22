@@ -36,7 +36,7 @@ def register_operaciones_centro_handlers(bot: TeleBot):
                 bot.send_document(
                     call.message.chat.id,
                     document,
-                    caption="✅ Aquí tienes el Preoperacioanal.",
+                    caption="✅ Aquí tienes el Preoperacional.",
                     timeout=120
                 )
             
