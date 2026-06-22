@@ -1,11 +1,11 @@
 import pymysql
-from database.db_usuarios import UsuariosDBManager
+from database.db_railway import RailwayDBManager
 
 class OperacionesRepository:
     """Repositorio para manejar el acceso a datos de Operaciones."""
     
     def __init__(self):
-        self.db = UsuariosDBManager()
+        self.db = RailwayDBManager()
         self.tabla_operaciones = 'wfm_operaciones_norte_actividades'
         self.tabla_recurso = 'recurso_operaciones_norte'
         self.tabla_calidad_operaciones_norte = 'operaciones_indicadores_calidad_norte'

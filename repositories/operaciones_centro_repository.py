@@ -1,11 +1,11 @@
 import pymysql
-from database.db_usuarios import UsuariosDBManager
+from database.db_railway import RailwayDBManager
 
 class PreoperacionalOperacionesCentroRepository:
     """Repositorio para acceder a la base de datos de Operaciones Centro (Preoperacional)."""
     
     def __init__(self):
-        self.db = UsuariosDBManager()
+        self.db = RailwayDBManager()
 
     def get_preoperacional_operaciones_centro(self):
         """Obtiene todos los registros de la vista vw_sis_preoperacional."""
