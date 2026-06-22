@@ -237,6 +237,53 @@ class OperacionesService:
         insertados = self.repo.insertar_datos_recurso(datos, recurso.columns.tolist())
         
         return recurso, insertados
+    
+    def procesar_archivo_calidad(self, file_path):
+        columnas_a_conservar = ['MUNICIPIO','NODO', 'REGION', 'Subtipo_Actividad',
+        'Tecnología', 'Tipo Trabajo', 'Tipo_Actividad', 'TIPO_OPERACION',
+         'KPI Q30 I&M', 'Corte Dia', 'Grupo Aliado', 'ID_EXTERNO_DE_RECURSO',
+         'NÚMERO_DE_CUENTA', 'ORDEN_DE_TRABAJO']
+        calidad_operaciones_norte = pd.read_excel(file_path)
+        calidad_operaciones_norte = calidad_operaciones_norte.reindex(columns=columnas_a_conservar)
+        calidad_operaciones_norte["KPI Q30 I&M"] = (
+            pd.to_numeric(
+                calidad_operaciones_norte["KPI Q30 I&M"]
+                .fillna("0")
+                .astype(str)
+                .str.replace("%", "", regex=False)
+                .str.replace(",", ".", regex=False),
+                errors="coerce"
+            )
+            .fillna(0)
+            / 100
+        )
 
+        # Convertir a número
+        calidad_operaciones_norte["ID_EXTERNO_DE_RECURSO"] = pd.to_numeric(calidad_operaciones_norte["ID_EXTERNO_DE_RECURSO"], errors="coerce")
+        calidad_operaciones_norte["NÚMERO_DE_CUENTA"] = pd.to_numeric(calidad_operaciones_norte["NÚMERO_DE_CUENTA"], errors="coerce")
+        calidad_operaciones_norte["ORDEN_DE_TRABAJO"] = pd.to_numeric(calidad_operaciones_norte["ORDEN_DE_TRABAJO"], errors="coerce")
+
+        # Eliminar filas con valores no numéricos
+        calidad_operaciones_norte = calidad_operaciones_norte[calidad_operaciones_norte["ID_EXTERNO_DE_RECURSO"].notna()]
+
+        # Convertir a entero
+        calidad_operaciones_norte["ID_EXTERNO_DE_RECURSO"] = calidad_operaciones_norte["ID_EXTERNO_DE_RECURSO"].astype(int)
+        calidad_operaciones_norte["NÚMERO_DE_CUENTA"] = (pd.to_numeric(calidad_operaciones_norte["NÚMERO_DE_CUENTA"], errors="coerce").astype("Int64"))
+        calidad_operaciones_norte["ORDEN_DE_TRABAJO"] = (pd.to_numeric(calidad_operaciones_norte["ORDEN_DE_TRABAJO"], errors="coerce").astype("Int64"))
+
+        #Ajuste fecha
+        calidad_operaciones_norte["Corte Dia"] = pd.to_datetime(
+            calidad_operaciones_norte["Corte Dia"].astype(str),
+            format="%Y%m%d",
+            errors="coerce"
+        ).dt.date
+        calidad_operaciones_norte.rename(columns={"Corte Dia": "Fecha"}, inplace=True)
+        fechas_unicas = calidad_operaciones_norte["Fecha"].drop_duplicates().tolist()
+        # Usar repositorio para eliminar y guardar
+        eliminados = self.repo.eliminar_registros_por_fecha_calidad_operaciones_norte(fechas_unicas)
+        datos = [tuple(row) for row in calidad_operaciones_norte.values]
+        insertados = self.repo.insertar_datos_calidad_operaciones_norte(datos, calidad_operaciones_norte.columns.tolist())
+        
+        return calidad_operaciones_norte, eliminados, insertados
 # Instancia global del servicio
 operaciones_service_instance = OperacionesService()

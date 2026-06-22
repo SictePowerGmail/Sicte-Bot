@@ -8,6 +8,7 @@ class OperacionesRepository:
         self.db = UsuariosDBManager()
         self.tabla_operaciones = 'wfm_operaciones_norte_actividades'
         self.tabla_recurso = 'recurso_operaciones_norte'
+        self.tabla_calidad_operaciones_norte = 'operaciones_indicadores_calidad_norte'
 
     def crear_tabla_operaciones_si_no_existe(self):
         sql = f"""
@@ -58,6 +59,19 @@ class OperacionesRepository:
                 eliminados = cursor.rowcount
                 conexion.commit()
                 return eliminados
+            
+    def eliminar_registros_por_fecha_calidad_operaciones_norte(self, fechas_unicas):
+        eliminados = 0
+        with self.db.get_connection() as conexion:
+            with conexion.cursor() as cursor:
+                sql = f"DELETE FROM {self.tabla_calidad_operaciones_norte} WHERE Fecha = %s"
+
+                for fecha in fechas_unicas:
+                    cursor.execute(sql, (fecha,))
+                    eliminados += cursor.rowcount
+
+                conexion.commit()
+                return eliminados
 
     def insertar_datos_operaciones(self, datos, columnas):
         if not datos:
@@ -98,6 +112,31 @@ class OperacionesRepository:
             try:
                 with conexion.cursor() as cursor:
                     cursor.execute(f"TRUNCATE TABLE {self.tabla_recurso}")
+                    for i in range(0, len(datos), BATCH_SIZE):
+                        lote = datos[i:i + BATCH_SIZE]
+                        cursor.executemany(sql, lote)
+                        total_insertados += len(lote)
+                conexion.commit()
+                return total_insertados
+            except pymysql.MySQLError as e:
+                conexion.rollback()
+                raise e
+            
+    def insertar_datos_calidad_operaciones_norte(self, datos, columnas):
+        if not datos:
+            return 0
+            
+        placeholders = ', '.join(['%s'] * len(columnas))
+        columnas_sql = ', '.join([f"`{col}`" for col in columnas])
+        sql = f"INSERT INTO {self.tabla_calidad_operaciones_norte} ({columnas_sql}) VALUES ({placeholders})"
+        
+        total_insertados = 0
+        BATCH_SIZE = 500
+        
+        with self.db.get_connection() as conexion:
+            try:
+                with conexion.cursor() as cursor:
+                    cursor.execute(f"TRUNCATE TABLE {self.tabla_calidad_operaciones_norte}")
                     for i in range(0, len(datos), BATCH_SIZE):
                         lote = datos[i:i + BATCH_SIZE]
                         cursor.executemany(sql, lote)
