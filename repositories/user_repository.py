@@ -25,7 +25,7 @@ class UserRepository:
         roles = []
         with self.db.get_connection() as conexion:
             with conexion.cursor(pymysql.cursors.DictCursor) as cursor:
-                sql = "SELECT enelApConsultas, wfmOperacionesNorte, penalizaciones FROM rol_chatbot_telegram WHERE cedula = %s LIMIT 1"
+                sql = "SELECT enelApConsultas, wfmOperacionesNorte, penalizaciones, wfmOperacionesCentro FROM rol_chatbot_telegram WHERE cedula = %s LIMIT 1"
                 cursor.execute(sql, (cedula,))
                 resultado = cursor.fetchone()
                 
@@ -36,6 +36,8 @@ class UserRepository:
                         roles.append('operaciones')
                     if resultado.get('penalizaciones'):
                         roles.append('admin')
+                    if resultado.get('wfmOperacionesCentro'):
+                        roles.append('operaciones_centro')
         return roles
 
     def agregar_usuario_db(self, cedula, hashed_password, rol):
@@ -49,6 +51,7 @@ class UserRepository:
                     if rol == 'enel': columna_rol = "enelApConsultas"
                     elif rol == 'operaciones': columna_rol = "wfmOperacionesNorte"
                     elif rol == 'admin': columna_rol = "penalizaciones"
+                    elif rol == 'operaciones_centro': columna_rol = "wfmOperacionesCentro"
                     
                     sql_rol = f"INSERT INTO rol_chatbot_telegram (cedula, {columna_rol}) VALUES (%s, %s)"
                     cursor.execute(sql_rol, (cedula, 'X'))

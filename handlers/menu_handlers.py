@@ -15,6 +15,11 @@ def mostrar_submenu_directo(bot, chat_id, rol, con_volver=False, message_id=None
             types.InlineKeyboardButton("⬇️ Descargar penalizaciones consolidado", callback_data="op_admin_penalizaciones")
         )
         titulo = "⚙️ Menú Administrador. Selecciona una opción:"
+    elif rol == 'operaciones_centro':
+        markup.add(
+            types.InlineKeyboardButton("⬇️ Descargar preoperacional", callback_data="op_preoperacional_operaciones_centro_penalizaciones")
+        )
+        titulo = "⚙️ Menú Opreaciones Centro. Selecciona una opción:"
     elif rol == 'operaciones':
         markup.add(
             types.InlineKeyboardButton("📤 Subir Archivo", callback_data="op_operaciones_subir")
@@ -62,6 +67,10 @@ def mostrar_menu_por_rol(bot: TeleBot, chat_id, user, message_id=None):
     if 'admin' in roles:
         markup.add(types.InlineKeyboardButton("⚙️ Menú Admin", callback_data="menu_admin"))
         has_menu = True
+
+    if 'operaciones_centro' in roles:
+        markup.add(types.InlineKeyboardButton("👷‍♂️ Menú Operaciones Centro", callback_data="menu_operaciones_centro"))
+        has_menu = True
         
     if 'operaciones' in roles:
         markup.add(types.InlineKeyboardButton("👷‍♂️ Menú Operaciones", callback_data="menu_operaciones"))
@@ -80,7 +89,7 @@ def mostrar_menu_por_rol(bot: TeleBot, chat_id, user, message_id=None):
             bot.send_message(chat_id, "Tu rol no tiene un menú asignado.")
 
 def register_menu_handlers(bot: TeleBot):
-    @bot.callback_query_handler(func=lambda call: call.data in ["menu_enel", "menu_admin", "menu_operaciones", "volver_menu_principal"])
+    @bot.callback_query_handler(func=lambda call: call.data in ["menu_enel", "menu_admin", "menu_operaciones", "menu_operaciones_centro", "volver_menu_principal"])
     def handle_submenus(call):
         bot.answer_callback_query(call.id)
         from services.auth_service import auth_service_instance
@@ -102,3 +111,6 @@ def register_menu_handlers(bot: TeleBot):
             
         elif data == "menu_operaciones" and 'operaciones' in user.roles:
             mostrar_submenu_directo(bot, call.message.chat.id, 'operaciones', con_volver=True, message_id=call.message.message_id)
+
+        elif data == "menu_operaciones_centro" and 'operaciones_centro' in user.roles:
+            mostrar_submenu_directo(bot, call.message.chat.id, 'operaciones_centro', con_volver=True, message_id=call.message.message_id)
