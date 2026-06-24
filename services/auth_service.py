@@ -24,7 +24,12 @@ class AuthService:
             hash_db = resultado['contrasena'].encode('utf-8')
             if bcrypt.checkpw(password.encode('utf-8'), hash_db):
                 roles = self.obtener_roles_usuario(cedula)
-                user = User(telegram_id=telegram_id, roles=roles, cedula=cedula)
+                user = User(
+                    telegram_id=telegram_id,
+                    roles=roles,
+                    cedula=cedula,
+                    nombre=resultado["nombre"]
+                    )
                 self.active_sessions[telegram_id] = user
                 return user
             else:

@@ -12,7 +12,7 @@ def register_auth_handlers(bot: TeleBot):
         user = auth_service_instance.get_session(message.from_user.id)
         if user:
             roles_str = ", ".join(user.roles) if user.roles else "Sin roles"
-            bot.send_message(message.chat.id, f"Hola {user.cedula}, ya tienes una sesión iniciada con rol: {roles_str}.")
+            bot.send_message(message.chat.id, f"Hola {user.nombre}, ya tienes una sesión iniciada con rol: {roles_str}.")
             mostrar_menu_por_rol(bot, message.chat.id, user)
         else:
             bot.delete_state(message.from_user.id, message.chat.id)
@@ -100,7 +100,7 @@ def register_auth_handlers(bot: TeleBot):
         user = auth_service_instance.autenticar_usuario(cedula, password, message.from_user.id)
         if user:
             roles_str = ", ".join(user.roles) if user.roles else "Sin roles"
-            bot.send_message(message.chat.id, f"¡Sesión iniciada exitosamente!\nBienvenido {user.cedula} ({roles_str})")
+            bot.send_message(message.chat.id, f"¡Sesión iniciada exitosamente!\nBienvenido {user.nombre} ({roles_str})")
             bot.delete_state(message.from_user.id, message.chat.id)
             if message.from_user.id in login_temp_data:
                 del login_temp_data[message.from_user.id]

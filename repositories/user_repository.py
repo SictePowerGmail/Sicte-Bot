@@ -17,7 +17,7 @@ class UserRepository:
     def obtener_usuario_por_cedula(self, cedula):
         with self.db.get_connection() as conexion:
             with conexion.cursor(pymysql.cursors.DictCursor) as cursor:
-                sql = "SELECT cedula, contrasena FROM `user` WHERE cedula = %s LIMIT 1"
+                sql = "SELECT cedula, nombre, contrasena FROM `user` WHERE cedula = %s LIMIT 1"
                 cursor.execute(sql, (cedula,))
                 return cursor.fetchone()
 
