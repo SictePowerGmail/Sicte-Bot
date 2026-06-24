@@ -5,3 +5,7 @@ class User:
         self.nombre = nombre
         self.cedula = cedula
         self.nombre = nombre
+
+    @property
+    def primer_nombre(self):
+        return self.nombre.split()[0] if self.nombre else ""
