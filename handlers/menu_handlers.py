@@ -24,7 +24,7 @@ def mostrar_submenu_directo(bot, chat_id, rol, con_volver=False, message_id=None
         markup.add(
             types.InlineKeyboardButton("📤 Subir Archivo", callback_data="op_operaciones_subir")
         )
-        titulo = "📝 Menú Operaciones. Selecciona una opción:"
+        titulo = "📝 Menú Operaciones Norte. Selecciona una opción:"
     else:
         if message_id:
             bot.edit_message_text("Tu rol no tiene un menú asignado.", chat_id=chat_id, message_id=message_id)
