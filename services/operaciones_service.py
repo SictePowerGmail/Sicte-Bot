@@ -173,71 +173,76 @@ class OperacionesService:
                                 'NOVEDAD DEL RECURSO', 'DASH BOARD', 'CEDULA RADIO 1', 'RADIO 1', 'CEDULA RADIO 2', 'RADIO 2',
                                 'PREOPERACIONAL TECNICO', 'PREOPERACIONAL AYUDANTE', 'FECHA DE PRESENTACIÓN  A INTERVENTORIA','Trabajos Dobles o Sencillos']
 
-        recurso_actual = pd.read_excel(file_path, sheet_name='RECURSO ACTUAL')
-        recurso_actual.columns = recurso_actual.columns.str.strip()
-        recurso_actual = recurso_actual.rename(columns={'NOMBRE DEL TÉCNICO': 'NOMBRE DEL TECNICO'})
-        recurso_actual["FECHA RETIRO"] = ""
-        recurso_actual["NOVEDAD DEL RECURSO"] = ""
-        recurso_actual = recurso_actual.reindex(columns=columnas_a_conservar)
+        def limpiar_dataframe(df, sheet_name, es_retirados=False):
+            df.columns = df.columns.str.strip()
+            df = df.rename(columns={'NOMBRE DEL TÉCNICO': 'NOMBRE DEL TECNICO'})
+            
+            # Reemplazar todos los valores nulos con None (para MySQL)
+            df = df.replace({pd.NA: None, np.nan: None})
+            
+            if es_retirados:
+                df = df.rename(columns={'PLACA AYUDANTE': 'PLACA VEHICULO AYUDANTE'})
+                df["HÍBRIDO"] = None
+                df["CEDULA RADIO 1"] = None
+                df["RADIO 1"] = None
+                df["CEDULA RADIO 2"] = None
+                df["RADIO 2"] = None
+                df["PREOPERACIONAL TECNICO"] = "No"
+                df["PREOPERACIONAL AYUDANTE"] = "No"
+                df["Trabajos Dobles o Sencillos"] = None
+                df = df.drop(columns=["MES", "AÑO"], errors='ignore')
+            else:
+                if sheet_name != 'RECURSO ADMON':
+                    df["FECHA RETIRO"] = None
+                    df["NOVEDAD DEL RECURSO"] = None
+                else:
+                    df["FECHA RETIRO"] = None
+                    df["NOVEDAD DEL RECURSO"] = None
+                    df = df.drop('ESTADO EN EL RECURSO', axis=1, errors='ignore')
+                    df["ESTADO EN EL RECURSO"] = "ADMON"
+            
+            if 'FECHA INGRESO' in df.columns:
+                df['FECHA DE PRESENTACIÓN  A INTERVENTORIA'] = df['FECHA INGRESO']
+            
+            return df.reindex(columns=columnas_a_conservar)
 
-        recurso_admon = pd.read_excel(file_path, sheet_name='RECURSO ADMON')
-        recurso_admon.columns = recurso_admon.columns.str.strip()
-        recurso_admon = recurso_admon.rename(columns={'NOMBRE DEL TÉCNICO': 'NOMBRE DEL TECNICO'})
-        recurso_admon["FECHA RETIRO"] = ""
-        recurso_admon["NOVEDAD DEL RECURSO"] = ""
-        recurso_admon = recurso_admon.drop('ESTADO EN EL RECURSO', axis=1, errors='ignore')
-        recurso_admon["ESTADO EN EL RECURSO"] = "ADMON"
-        if 'FECHA INGRESO' in recurso_admon.columns:
-            recurso_admon['FECHA DE PRESENTACIÓN  A INTERVENTORIA'] = recurso_admon['FECHA INGRESO']
-        recurso_admon = recurso_admon.reindex(columns=columnas_a_conservar)
-
-        recurso_retirados = pd.read_excel(file_path, sheet_name='RETIROS')
-        recurso_retirados.columns = recurso_retirados.columns.str.strip()
-        recurso_retirados = recurso_retirados.rename(columns={'PLACA AYUDANTE': 'PLACA VEHICULO AYUDANTE'})
-        recurso_retirados["HÍBRIDO"] = ""
-        recurso_retirados["CEDULA RADIO 1"] = ""
-        recurso_retirados["RADIO 1"] = ""
-        recurso_retirados["CEDULA RADIO 2"] = ""
-        recurso_retirados["RADIO 2"] = ""
-        recurso_retirados["PREOPERACIONAL TECNICO"] = "No"
-        recurso_retirados["PREOPERACIONAL AYUDANTE"] = "No"
-        recurso_retirados["Trabajos Dobles o Sencillos"] = ""
-        if 'FECHA INGRESO' in recurso_retirados.columns:
-            recurso_retirados['FECHA DE PRESENTACIÓN  A INTERVENTORIA'] = recurso_retirados['FECHA INGRESO']
-        recurso_retirados = recurso_retirados.drop(columns=["MES", "AÑO"], errors='ignore')
-        recurso_retirados = recurso_retirados.reindex(columns=columnas_a_conservar)
+        recurso_actual = limpiar_dataframe(pd.read_excel(file_path, sheet_name='RECURSO ACTUAL'), 'RECURSO ACTUAL')
+        recurso_admon = limpiar_dataframe(pd.read_excel(file_path, sheet_name='RECURSO ADMON'), 'RECURSO ADMON')
+        recurso_retirados = limpiar_dataframe(pd.read_excel(file_path, sheet_name='RETIROS'), 'RETIROS', es_retirados=True)
 
         recurso = pd.concat([recurso_actual, recurso_retirados, recurso_admon], ignore_index=True)
         recurso.columns = recurso.columns.str.strip()
-        recurso = recurso.drop_duplicates(subset=['CEDULA'], keep='first')
-
+        
+        # Limpiar columnas específicas
         for col in ["Trabajos Dobles o Sencillos", "COMPOSICIÓN"]:
             if col in recurso.columns:
-                recurso[col] = (
-                    recurso[col]
-                    .astype(str)
-                    .str.strip()
-                    .replace({
-                        "Sencillo": "SENCILLA", "Doble": "DOBLE", "Dobles": "DOBLE",
-                        "Sencillas": "SENCILLA", "SENCILLAS": "SENCILLA", "SOLO": "SENCILLA",
-                        "nan": None, "None": None
-                    })
-                )
-
-        recurso = recurso.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
-        recurso = recurso.astype(str)
-
-        for col in ['FECHA INGRESO']:
-            if col in recurso.columns:
-                recurso[col] = recurso[col].replace('', None).replace('nan', None).replace('None', None)
-
+                recurso[col] = recurso[col].astype(str).str.strip().replace({
+                    "Sencillo": "SENCILLA", "Doble": "DOBLE", "Dobles": "DOBLE",
+                    "Sencillas": "SENCILLA", "SENCILLAS": "SENCILLA", "SOLO": "SENCILLA",
+                    "nan": None, "None": None, "": None
+                })
+        
+        # Limpiar todas las columnas de tipo objeto
+        for col in recurso.select_dtypes(include=['object']).columns:
+            recurso[col] = recurso[col].replace(['nan', 'None', ''], None)
+            # Si es string, limpiar espacios pero mantener None
+            recurso[col] = recurso[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
+        
+        # Eliminar duplicados por cédula
         recurso = recurso.drop_duplicates(subset=['CEDULA'], keep='first')
         recurso = recurso.dropna(subset=["CEDULA"])
-        recurso = recurso.replace('nan', None).replace('None', None)
-        recurso['CEDULA'] = recurso['CEDULA'].replace(['', 'nan', 'None'], pd.NA)
-        recurso = recurso.dropna(subset=['CEDULA'])
         
-        datos = [tuple(row) for row in recurso.values]
+        # Convertir todo a Python nativo para evitar problemas con MySQL
+        datos = []
+        for _, row in recurso.iterrows():
+            fila = []
+            for val in row:
+                if pd.isna(val) or val == 'nan' or val == 'None' or val == '':
+                    fila.append(None)
+                else:
+                    fila.append(val)
+            datos.append(tuple(fila))
+        
         insertados = self.repo.insertar_datos_recurso(datos, recurso.columns.tolist())
         
         return recurso, insertados
