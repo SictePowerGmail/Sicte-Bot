@@ -50,6 +50,7 @@ class OperacionesService:
 
     def procesar_archivo_excel(self, file_path, tipo_archivo):
         extension = os.path.splitext(file_path)[1].lower()
+        
         if extension == '.csv':
             df = pd.read_csv(file_path, dtype=str)
         elif extension == '.xlsx':
@@ -62,8 +63,8 @@ class OperacionesService:
                 raise ValueError("El archivo está vacío o solo tiene encabezados.")
             columnas = [str(c) if c is not None else f'col_{i}' for i, c in enumerate(datos[0])]
             df = pd.DataFrame(datos[1:], columns=columnas)
-            df = df.astype(str)
-            df = df.replace('None', None).replace('none', None)
+            # NO convertir todo a string aquí
+            # df = df.astype(str)  # <--- ELIMINAR ESTA LÍNEA
         elif extension == '.xls':
             df = pd.read_excel(file_path, dtype=str, engine='xlrd')
         else:
@@ -96,20 +97,40 @@ class OperacionesService:
         
         columnas_validas = [col for col in self.COLUMNAS_BD if col in df.columns]
         df = df[columnas_validas]
+        
+        # IMPORTANTE: Limpiar TODOS los valores nulos
+        df = df.replace({pd.NA: None, np.nan: None, 'nan': None, 'None': None, '': None})
         df = df.where(pd.notnull(df), None)
 
         # Usar repositorio para eliminar y guardar
         eliminados = self.repo.eliminar_registros_por_archivo(nombre_archivo)
-        datos = [tuple(row) for row in df.values]
+        
+        # Preparar datos para MySQL - asegurar que no haya NaN
+        datos = []
+        for _, row in df.iterrows():
+            fila = []
+            for val in row:
+                # Verificar si es nulo de cualquier tipo
+                if pd.isna(val) or val == 'nan' or val == 'None' or val == '' or val is None:
+                    fila.append(None)
+                else:
+                    # Si es un objeto, convertir a string (excepto None)
+                    if hasattr(val, 'item'):  # Para numpy tipos
+                        val = val.item()
+                    fila.append(val)
+            datos.append(tuple(fila))
+        
         insertados = self.repo.insertar_datos_operaciones(datos, df.columns.tolist())
         
         return df, nombre_archivo, eliminados, insertados
 
     def _corregir_fecha(self, valor):
-        if pd.isna(valor) or valor is None or str(valor).strip() == '':
+        # Manejar valores nulos
+        if pd.isna(valor) or valor is None or str(valor).strip() == '' or str(valor).strip().lower() == 'nan':
             return None
 
         valor_str = str(valor).strip()
+        
         try:
             fecha = pd.to_datetime(valor_str, format='%Y-%m-%d %H:%M:%S', errors='raise')
             return fecha.strftime('%Y-%m-%d')
@@ -122,9 +143,11 @@ class OperacionesService:
         except (ValueError, TypeError):
             pass
 
+        # Intentar con diferentes separadores
         for sep in ['/', '-', '.']:
             partes = valor_str.split(sep)
             if len(partes) == 3:
+                # Si el año tiene 2 dígitos, agregar 20
                 if len(partes[2]) == 2:
                     partes[2] = '20' + partes[2]
                     valor_corregido = sep.join(partes)
@@ -148,13 +171,13 @@ class OperacionesService:
                         pass
 
         try:
-            fecha = pd.to_datetime(valor_str)
+            fecha = pd.to_datetime(valor_str, errors='raise')
             return fecha.strftime('%Y-%m-%d')
         except (ValueError, TypeError):
             return None
 
     def _convertir_fecha_agendamiento(self, valor):
-        if pd.isna(valor) or valor is None or str(valor).strip() == '':
+        if pd.isna(valor) or valor is None or str(valor).strip() == '' or str(valor).strip().lower() == 'nan':
             return None
         valor_str = str(valor).strip()
         try:
