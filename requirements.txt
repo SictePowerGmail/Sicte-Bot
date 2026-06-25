@@ -3,5 +3,6 @@ pymysql
 python-dotenv
 bcrypt
 pandas
+numpy
 openpyxl
-xlrd
+xlrd
