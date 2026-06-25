@@ -231,7 +231,11 @@ class OperacionesService:
             if col in recurso.columns:
                 recurso[col] = recurso[col].replace('', None).replace('nan', None).replace('None', None)
 
+        recurso = recurso.drop_duplicates(subset=['CEDULA'], keep='first')
+        recurso = recurso.dropna(subset=["CEDULA"])
         recurso = recurso.replace('nan', None).replace('None', None)
+        recurso['CEDULA'] = recurso['CEDULA'].replace(['', 'nan', 'None'], pd.NA)
+        recurso = recurso.dropna(subset=['CEDULA'])
         
         datos = [tuple(row) for row in recurso.values]
         insertados = self.repo.insertar_datos_recurso(datos, recurso.columns.tolist())
