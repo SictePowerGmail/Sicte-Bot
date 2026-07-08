@@ -78,7 +78,12 @@ class OperacionesService:
         df['Fecha'] = df['Fecha'].apply(self._corregir_fecha)
         df['Fecha de creación de la OT YYYY-MM-DD'] = df['Fecha de agendamiento'].apply(self._convertir_fecha_agendamiento)
 
-        prefijo_archivo = 'PY' if tipo_archivo == 'Pymes' else tipo_archivo
+        if tipo_archivo == 'Pymes':
+            prefijo_archivo = 'PY'
+        elif tipo_archivo == 'DTH':
+            prefijo_archivo = 'DTH'
+        else:
+            prefijo_archivo = tipo_archivo
         
         def _generar_nombre_archivo(fecha_str):
             if fecha_str and isinstance(fecha_str, str):

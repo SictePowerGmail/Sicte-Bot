@@ -37,6 +37,7 @@ def register_operaciones_handlers(bot: TeleBot):
         markup.add(
             types.InlineKeyboardButton("🏠 Residencial", callback_data="op_tipo_Residencial"),
             types.InlineKeyboardButton("🏢 Pymes", callback_data="op_tipo_Pymes"),
+            types.InlineKeyboardButton("🛰️ DTH", callback_data="op_tipo_DTH"),
             types.InlineKeyboardButton("👷‍♂️ Recurso", callback_data="op_tipo_Recurso"),
             types.InlineKeyboardButton("📊 Calidad", callback_data="op_tipo_Calidad")
         )
