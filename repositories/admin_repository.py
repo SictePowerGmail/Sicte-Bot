@@ -1,11 +1,11 @@
 import pymysql
-from database.db_servidor_san_cipriano import ServidorSanCiprianoDBManager
+from database.db_railway import RailwayDBManager
 
 class AdminRepository:
-    """Repositorio para acceder a la base de datos de administración (San Cipriano)."""
+    """Repositorio para acceder a la vista de penalizaciones (Railway)."""
     
     def __init__(self):
-        self.db = ServidorSanCiprianoDBManager()
+        self.db = RailwayDBManager()
 
     def get_penalizaciones(self):
         """Obtiene todos los registros de la vista vw_penalizaciones."""
